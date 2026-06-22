@@ -66,8 +66,8 @@ class ZoneViolationDetector(BaseModel):
         labels      : (N,)     int32  — 0: temiz, 1: ihlal
     """
 
-    LEFT_FOOT_IDX  = 24   # halpe26: sol ayak ucu
-    RIGHT_FOOT_IDX = 25   # halpe26: sağ ayak ucu
+    LEFT_ANKLE_IDX  = 15   # halpe26: sol ayak bileği (düzeltildi: eskiden 24 — COCO-17 dışı)
+    RIGHT_ANKLE_IDX = 16   # halpe26: sağ ayak bileği (düzeltildi: eskiden 25 — COCO-17 dışı)
 
     def __init__(
         self,
@@ -192,8 +192,8 @@ class ZoneViolationDetector(BaseModel):
             # 4. Affine inverse → orijinal piksel koordinatları (ZVD sorumluluğu)
             kpts = self._affine_inverse(kpts_crop, matrices)
 
-            # 5. Ayak ucu — (N, 2, 2): [sol_ayak, sağ_ayak]
-            foot_tips = kpts[:, [self.LEFT_FOOT_IDX, self.RIGHT_FOOT_IDX], :]
+            # 5. Ayak bileği keypoint'leri — (N, 2, 2): [sol_ayak_bileği, sağ_ayak_bileği]
+            foot_tips = kpts[:, [self.LEFT_ANKLE_IDX, self.RIGHT_ANKLE_IDX], :]
 
             # 6. Zone testi
             N       = len(boxes)
@@ -349,8 +349,8 @@ class ZoneViolationDetector(BaseModel):
         return result
 
     def _foot_in_zone(self, kpts: np.ndarray, kpt_scores: np.ndarray) -> bool:
-        """Sol ve sağ ayak ucu keypoint'lerinden biri zone içindeyse True döner."""
-        for idx in (self.LEFT_FOOT_IDX, self.RIGHT_FOOT_IDX):
+        """Sol ve sağ ayak bileği keypoint'lerinden biri zone içindeyse True döner."""
+        for idx in (self.LEFT_ANKLE_IDX, self.RIGHT_ANKLE_IDX):
             if kpt_scores[idx] >= self.kpt_thr:
                 if cv2.pointPolygonTest(
                     self.zone,

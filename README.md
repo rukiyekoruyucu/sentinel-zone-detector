@@ -1,7 +1,7 @@
 <div align="center">
 
-<h1>🛡️ SENTINEL</h1>
-<h3>Real-Time Security Intelligence Platform</h3>
+<h1>🎯 ZoViD</h1>
+<h3>Real-Time Zone Violation Detection Platform</h3>
 
 <p>
   <strong>Zone Detector</strong> · <strong>XG Detector</strong> · <strong>Live MJPEG Streaming</strong> · <strong>Web Dashboard</strong>
@@ -18,7 +18,7 @@
 
 ## 🌐 Overview
 
-**SENTINEL** is a production-ready, web-based security intelligence platform that provides real-time video analysis across multiple camera feeds from a single dashboard.
+**ZoViD** *(Real-Time Zone Violation Detection)* is a production-ready, web-based security intelligence platform that provides real-time video analysis across multiple camera feeds from a single dashboard.
 
 It ships with two detection pipelines:
 
@@ -190,7 +190,7 @@ MAX_CONTENT_LENGTH=524288000   # 500 MB max upload
 ## 📁 Project Structure
 
 ```
-sentinel/
+zovid/
 ├── app/
 │   ├── __init__.py          # Application factory — blueprints + model loading
 │   ├── extensions.py        # SQLAlchemy, LoginManager, SocketIO instances
@@ -302,19 +302,6 @@ User ──< Session >── Camera
 
 ---
 
-## 🐛 Bug Fixes (v2)
-
-| Severity | Issue | Fix |
-|---|---|---|
-| 🔴 Critical | `LEFT_FOOT=24, RIGHT_FOOT=25` — out-of-range COCO-17 keypoints → zone detection never triggered | Changed to `LEFT_ANKLE=15, RIGHT_ANKLE=16` |
-| 🔴 Critical | `time.sleep(0.033)` blocked eventlet green threads → stream freeze | Changed to `eventlet.sleep(0.033)` |
-| 🟡 Major | Zone coordinates not normalized → polygon mismatch on non-default resolutions | Added canvas → 640×480 stream coordinate transform |
-| 🟡 Major | `import time` repeated inside inference loop | Moved to module-level |
-| 🟡 Major | `camera-select` vs `cameraSelect` DOM ID mismatch → JS errors | Unified to `cameraSelect` |
-| 🟡 Major | `session.violations.order_by(string)` → SQLAlchemy error | Changed to `.order_by(Violation.timestamp.desc())` |
-
----
-
 ## 🚀 Deployment
 
 ### Production (Gunicorn + Nginx)
@@ -323,7 +310,7 @@ User ──< Session >── Camera
 # Set production environment
 export FLASK_ENV=production
 export SECRET_KEY=<strong-random-key>
-export DATABASE_URL=postgresql://user:pass@localhost/sentinel
+export DATABASE_URL=postgresql://user:pass@localhost/zovid
 
 # Run with Gunicorn (eventlet worker)
 gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:8000 "run:create_app()"
