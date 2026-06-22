@@ -39,7 +39,15 @@ Key characteristics:
 
 ## 📸 Screenshots
 
-> _Screenshots will be added soon. The sections below show what each screen covers._
+<img width="1919" height="869" alt="image" src="https://github.com/user-attachments/assets/ea7ab0b5-0ac1-4429-809e-24aefe8afffe" />
+<img width="1919" height="874" alt="image" src="https://github.com/user-attachments/assets/d8150a80-34d7-4712-9fa7-d8faa0cd3e12" />
+<img width="1919" height="869" alt="image" src="https://github.com/user-attachments/assets/1fa61ce1-e681-49cf-9c83-f04706bf7392" />
+<img width="1919" height="870" alt="image" src="https://github.com/user-attachments/assets/55ec1eb7-7ccf-4765-b9c7-d34a66e343b6" />
+<img width="1919" height="866" alt="image" src="https://github.com/user-attachments/assets/a3f3816b-4e0e-40ec-9610-f08e8fa3ffac" />
+<img width="1919" height="866" alt="image" src="https://github.com/user-attachments/assets/af47e039-f497-4e2f-b6e4-83f613d726c9" />
+<img width="1918" height="869" alt="image" src="https://github.com/user-attachments/assets/4ab6996d-29ea-4b1f-b924-2b3cd702f5da" />
+<img width="1919" height="870" alt="image" src="https://github.com/user-attachments/assets/9b230590-6ed2-48e4-ba13-eb4a261fbb09" />
+<img width="1919" height="869" alt="image" src="https://github.com/user-attachments/assets/f360031f-2fdc-4b21-b16f-bf52a6a03e40" />
 
 | Screen | Description |
 |---|---|
@@ -49,15 +57,6 @@ Key characteristics:
 | **Admin Panel** | User management, camera registry, system health |
 | **Training** | XG Detector model training trigger and progress log |
 
-<!-- 
-  📌 TO ADD SCREENSHOTS:
-  Replace each placeholder below with your actual screenshot files.
-  
-  ![Dashboard](docs/screenshots/dashboard.png)
-  ![Session View](docs/screenshots/session.png)
-  ![Reports](docs/screenshots/reports.png)
-  ![Admin Panel](docs/screenshots/admin.png)
--->
 
 ---
 
