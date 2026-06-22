@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% block title %}Raporlar{% endblock %}
+{% block breadcrumb %}ZoViD / <span>RAPORLAR</span>{% endblock %}
+{% block page_title %}İhlal Raporları{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-ghost btn-sm" id="exportCsvBtn">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    CSV İndir
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Sekmeler -->
+<div style="display:flex;gap:4px;margin-bottom:16px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px;width:fit-content;box-shadow:var(--shadow-card)">
+  <button id="tabViolations" class="btn btn-primary btn-sm active" onclick="switchTab('violations')"
+          style="border-radius:6px">
+    📋 İhlal Kayıtları
+  </button>
+  <button id="tabSessions" class="btn btn-ghost btn-sm" onclick="switchTab('sessions')"
+          style="border-radius:6px">
+    📊 Session Özeti
+  </button>
+</div>
+
+<!-- ═══ Panel: İhlal Kayıtları ═══════════════════════════════════════ -->
+<div id="panelViolations">
+
+  <!-- Filtreler -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">Filtreler</span></div>
+    <div class="card-body">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div class="form-group" style="margin:0;min-width:140px">
+          <label>Algoritma</label>
+          <select class="form-control" id="fAlgo">
+            <option value="">Tümü</option>
+            <option value="zone_detector">Zone Detector</option>
+            <option value="xg_detector">XG Detector</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:130px">
+          <label>Başlangıç</label>
+          <input class="form-control" type="date" id="fDateFrom">
+        </div>
+        <div class="form-group" style="margin:0;min-width:130px">
+          <label>Bitiş</label>
+          <input class="form-control" type="date" id="fDateTo">
+        </div>
+        <div class="form-group" style="margin:0;min-width:100px">
+          <label>Session #</label>
+          <input class="form-control" type="number" id="fSession" placeholder="Tümü">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="loadReport()">Filtrele</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Sıfırla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Özet istatistikler -->
+  <div class="stats-row" style="margin-bottom:16px">
+    <div class="stat-cell">
+      <div class="stat-cell-label">Toplam İhlal</div>
+      <div class="stat-cell-value" id="rTotalViol">—</div>
+      <div class="stat-cell-sub">filtreye göre</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-label">Zone Detector</div>
+      <div class="stat-cell-value amber" id="rZDViol">—</div>
+      <div class="stat-cell-sub">bölge ihlalleri</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-label">XG Detector</div>
+      <div class="stat-cell-value" style="color:var(--blue)" id="rXGViol">—</div>
+      <div class="stat-cell-sub">nesne alarmları</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-cell-label">Etkilenen Session</div>
+      <div class="stat-cell-value" id="rSessions">—</div>
+      <div class="stat-cell-sub">ihlal içeren</div>
+    </div>
+  </div>
+
+  <div class="report-grid">
+    <!-- İhlal tablosu -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">İhlal Kayıtları</span>
+        <span id="rTableCount" class="badge">— kayıt</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="violTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Session</th>
+              <th>Algoritma</th>
+              <th>Zaman</th>
+              <th>Sayı</th>
+              <th>Snapshot</th>
+            </tr>
+          </thead>
+          <tbody id="violTbody">
+            <tr><td colspan="6" class="text-center text-muted" style="padding:32px">Yükleniyor...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Pagination -->
+      <div style="padding:10px 14px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost btn-sm" id="prevPage" disabled>← Önceki</button>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-3)" id="pageInfo">1 / 1</span>
+        <button class="btn btn-ghost btn-sm" id="nextPage" disabled>Sonraki →</button>
+      </div>
+    </div>
+
+    <!-- Snapshot galerisi -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Anlık Görüntüler</span></div>
+      <div class="card-body">
+        <div class="snapshot-grid" id="snapGrid">
+          <div class="log-empty">Yükleniyor...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /panelViolations -->
+
+<!-- ═══ Panel: Session Özeti ═════════════════════════════════════════ -->
+<div id="panelSessions" style="display:none">
+
+  <!-- Session filtresi -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">Filtreler</span></div>
+    <div class="card-body">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div class="form-group" style="margin:0;min-width:140px">
+          <label>Algoritma</label>
+          <select class="form-control" id="sAlgo">
+            <option value="">Tümü</option>
+            <option value="zone_detector">Alan İhlal</option>
+            <option value="xg_detector">İst. Obje</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="loadSessions()">Filtrele</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Tüm Analizler</span>
+      <span id="sTableCount" class="badge">— analiz</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Etiket</th>
+            <th>Algoritma</th>
+            <th>Durum</th>
+            <th>İhlal</th>
+            <th>Süre</th>
+            <th>Oluşturulma</th>
+          </tr>
+        </thead>
+        <tbody id="sessionTbody">
+          <tr><td colspan="7" class="text-center text-muted" style="padding:32px">Yükleniyor...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /panelSessions -->
+
+<!-- Snapshot lightbox -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;place-items:center;cursor:pointer" onclick="this.style.display='none'">
+  <img id="lightboxImg" style="max-width:90vw;max-height:90vh;border:1px solid var(--border)">
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 1;
+const PER_PAGE = 50;
+let allViolations = [];
+let allSessions   = [];
+let activeTab     = 'violations';
+
+// ── Sekme geçişi ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tabViolations').classList.toggle('active', tab === 'violations');
+  document.getElementById('tabSessions').classList.toggle('active', tab === 'sessions');
+  document.getElementById('panelViolations').style.display = tab === 'violations' ? '' : 'none';
+  document.getElementById('panelSessions').style.display   = tab === 'sessions'   ? '' : 'none';
+  if (tab === 'sessions') loadSessions();
+}
+
+// ── İhlal Kayıtları ─────────────────────────────────────────────────────
+async function loadReport() {
+  const algo    = document.getElementById('fAlgo').value;
+  const from_dt = document.getElementById('fDateFrom').value;
+  const to_dt   = document.getElementById('fDateTo').value;
+  const sess_id = document.getElementById('fSession').value;
+
+  let url = '/api/reports/violations?limit=500';
+  if (algo)    url += '&algo=' + algo;
+  if (from_dt) url += '&from_dt=' + from_dt;
+  if (to_dt)   url += '&to_dt=' + to_dt;
+  if (sess_id) url += '&session_id=' + sess_id;
+
+  const res  = await fetch(url);
+  const data = await res.json();
+  allViolations = data.violations || [];
+  currentPage   = 1;
+  renderTable();
+  renderSnapshots();
+  updateStats(data.stats || {});
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PER_PAGE;
+  const slice = allViolations.slice(start, start + PER_PAGE);
+  const tbody = document.getElementById('violTbody');
+  const total = allViolations.length;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  document.getElementById('rTableCount').textContent = total + ' kayıt';
+  document.getElementById('pageInfo').textContent = currentPage + ' / ' + pages;
+  document.getElementById('prevPage').disabled = currentPage <= 1;
+  document.getElementById('nextPage').disabled = currentPage >= pages;
+
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:32px">Kayıt bulunamadı</td></tr>';
+    return;
+  }
+  tbody.innerHTML = slice.map(v => `
+    <tr>
+      <td class="mono" style="color:var(--text-3)">${v.id}</td>
+      <td><a href="/sessions/${v.session_id}" style="color:var(--amber)">#${v.session_id}</a>
+        ${v.session_label ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);display:block">${v.session_label}</span>` : ''}
+      </td>
+      <td><span class="algo-tag ${v.algorithm_type === 'zone_detector' ? 'zone' : 'xg'}">${v.algorithm_type === 'zone_detector' ? 'ZD' : 'XG'}</span></td>
+      <td class="mono" style="font-size:11px">${new Date(v.timestamp).toLocaleString('tr-TR')}</td>
+      <td class="mono">${v.person_count}</td>
+      <td>${v.snapshot_path
+        ? `<img src="/api/sessions/snapshots/${v.snapshot_path}" style="height:36px;border:1px solid var(--border);cursor:pointer" onclick="showLightbox(this.src)">`
+        : '<span class="text-muted">—</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderSnapshots() {
+  const snaps = allViolations.filter(v => v.snapshot_path).slice(0, 24);
+  const grid  = document.getElementById('snapGrid');
+  if (!snaps.length) { grid.innerHTML = '<div class="log-empty">Görüntü bulunamadı</div>'; return; }
+  grid.innerHTML = snaps.map(v => `
+    <div class="snapshot-item" onclick="showLightbox('/api/sessions/snapshots/${v.snapshot_path}')">
+      <img src="/api/sessions/snapshots/${v.snapshot_path}" loading="lazy">
+      <span class="snap-time">${new Date(v.timestamp).toLocaleTimeString('tr-TR')} · #${v.session_id}</span>
+    </div>
+  `).join('');
+}
+
+function updateStats(stats) {
+  document.getElementById('rTotalViol').textContent = stats.total ?? allViolations.length;
+  document.getElementById('rZDViol').textContent    = stats.zone_detector ?? allViolations.filter(v=>v.algorithm_type==='zone_detector').length;
+  document.getElementById('rXGViol').textContent    = stats.xg_detector   ?? allViolations.filter(v=>v.algorithm_type==='xg_detector').length;
+  const sessions = new Set(allViolations.map(v=>v.session_id));
+  document.getElementById('rSessions').textContent = sessions.size;
+}
+
+function resetFilters() {
+  document.getElementById('fAlgo').value     = '';
+  document.getElementById('fDateFrom').value = '';
+  document.getElementById('fDateTo').value   = '';
+  document.getElementById('fSession').value  = '';
+  loadReport();
+}
+
+// ── Session Özeti ────────────────────────────────────────────────────────
+async function loadSessions() {
+  const algo = document.getElementById('sAlgo').value;
+  let url = '/api/reports/sessions';
+  if (algo) url += '?algo=' + algo;
+
+  document.getElementById('sessionTbody').innerHTML =
+    '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Yükleniyor...</td></tr>';
+
+  const res  = await fetch(url);
+  const data = await res.json();
+  allSessions = data.sessions || [];
+  renderSessions();
+}
+
+function renderSessions() {
+  const tbody = document.getElementById('sessionTbody');
+  document.getElementById('sTableCount').textContent = allSessions.length + ' analiz';
+
+  if (!allSessions.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:32px">Kayıt bulunamadı</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = allSessions.map(s => {
+    const dur    = s.duration_seconds != null
+      ? `${Math.floor(s.duration_seconds/60)}dk ${s.duration_seconds%60}sn` : '—';
+    const vclass = s.violation_count > 0 ? 'color:var(--red);font-weight:700' : 'color:var(--green)';
+    const statBg = {'active':'var(--green)','stopped':'var(--amber)','pending':'var(--blue)'}[s.status] || '#aaa';
+    return `
+    <tr>
+      <td><a href="/sessions/${s.id}" style="color:var(--amber);font-weight:600">#${s.id}</a></td>
+      <td style="font-size:12px">${s.session_label || '<span style="color:var(--text-3)">—</span>'}</td>
+      <td><span class="algo-tag ${s.algorithm_type==='zone_detector'?'zone':'xg'}">${s.algorithm_type==='zone_detector'?'Alan İhlal':'İst. Obje'}</span></td>
+      <td><span class="badge" style="background:${statBg};color:#fff;font-size:10px">${s.status.toUpperCase()}</span></td>
+      <td class="mono" style="${vclass}">${s.violation_count}</td>
+      <td class="mono" style="font-size:11px">${dur}</td>
+      <td class="mono" style="font-size:11px">${s.created_at ? new Date(s.created_at).toLocaleString('tr-TR') : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').style.display = 'grid';
+}
+
+// ── Pagination ───────────────────────────────────────────────────────────
+document.getElementById('prevPage').addEventListener('click', () => { currentPage--; renderTable(); });
+document.getElementById('nextPage').addEventListener('click', () => { currentPage++; renderTable(); });
+
+// ── CSV ──────────────────────────────────────────────────────────────────
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  if (activeTab === 'violations') {
+    if (!allViolations.length) return;
+    const headers = ['id','session_id','algorithm_type','timestamp','person_count','snapshot_path'];
+    const rows = allViolations.map(v => headers.map(h => `"${v[h]??''}"`).join(','));
+    downloadCsv([headers.join(','), ...rows].join('\n'), 'violations');
+  } else {
+    if (!allSessions.length) return;
+    const headers = ['id','session_label','algorithm_type','status','violation_count','duration_seconds','created_at'];
+    const rows = allSessions.map(s => headers.map(h => `"${s[h]??''}"`).join(','));
+    downloadCsv([headers.join(','), ...rows].join('\n'), 'sessions');
+  }
+});
+
+function downloadCsv(csv, name) {
+  const a    = document.createElement('a');
+  a.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `zovid_${name}_` + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+loadReport();
+</script>
+{% endblock %}

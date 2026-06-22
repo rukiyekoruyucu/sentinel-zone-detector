@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block title %}Analiz #{{ session.id }}{% endblock %}
+{% block breadcrumb %}ZoViD / ANALİZ / <span>#{{ session.id }}</span>{% endblock %}
+{% block page_title %}
+  {% if session.session_label %}{{ session.session_label }}{% else %}Analiz #{{ session.id }}{% endif %}
+{% endblock %}
+{% block topbar_actions %}
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="statusBadge" class="badge badge-{% if session.status == 'active' %}green{% elif session.status == 'stopped' %}amber{% else %}blue{% endif %}">
+      <span class="status-dot {{ session.status }}"></span>
+      {{ session.status | upper }}
+    </span>
+    <button class="btn btn-success btn-sm" id="startBtn"
+      {% if session.status == 'active' %}style="display:none"{% endif %}>
+      ▶ Başlat
+    </button>
+    <button class="btn btn-danger btn-sm" id="stopBtn"
+      {% if session.status != 'active' %}style="display:none"{% endif %}>
+      ■ Durdur
+    </button>
+    <button class="btn btn-ghost btn-sm" id="deleteBtn"
+            style="color:var(--red);border-color:var(--red)" title="Analizi Sil">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+      Sil
+    </button>
+    <a href="{{ url_for('session_view.new_session') }}" class="btn btn-ghost btn-sm">+ Yeni</a>
+  </div>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══════ Üst: Algoritma + Durum Çubuğu ═══════════════════════════ -->
+<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;box-shadow:var(--shadow-card)">
+  <div style="width:38px;height:38px;border-radius:50%;border:2px solid var(--cyan);background:var(--cyan-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+    {% if session.algorithm_type == 'zone_detector' %}🛡{% else %}📦{% endif %}
+  </div>
+  <div>
+    <div style="font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--text)">
+      {% if session.algorithm_type == 'zone_detector' %}Alan İhlal Algoritması{% else %}İstenmeyen Obje Alg. (Beta){% endif %}
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-top:1px">
+      {% if session.algorithm_type == 'zone_detector' %}
+        det={{ session.det_score_thr }}  kpt={{ session.kpt_thr }}
+      {% else %}
+        conf={{ session.xg_config.confidence_thr }}  cooldown={{ session.xg_config.alarm_cooldown }}s
+      {% endif %}
+    </div>
+  </div>
+  <div class="status-dot active" id="liveDot" style="margin-left:auto;{% if session.status != 'active' %}display:none{% endif %}"></div>
+</div>
+
+<!-- ═══════ Ana Video Alanı ══════════════════════════════════════════ -->
+<div style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:var(--shadow-md);margin-bottom:16px">
+
+  <!-- Video + Canvas -->
+  <div id="videoFrame" style="position:relative;width:100%;background:#1a1a2e;line-height:0">
+
+    <!-- Placeholder -->
+    <div id="streamPlaceholder" style="aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#6b7280">
+      <div style="font-size:36px">🎥</div>
+      <div style="font-size:13px;font-weight:500">Analiz başlatılmamış</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:#9ca3af">
+        {{ session.source_type | upper }} — {{ session.source_value[:60] if session.source_value else '—' }}
+      </div>
+    </div>
+
+    <!-- Stream img — 4:3 orantılı, tam genişlik -->
+    <img id="streamImg" src="" alt="stream"
+         style="width:100%;aspect-ratio:4/3;object-fit:contain;background:#000;
+                display:{% if session.status == 'active' %}block{% else %}none{% endif %}">
+
+    <!-- Video önizleme (zone çizimi için 3. saniye karesi) -->
+    <img id="zonePreviewBg" src="" alt=""
+         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;opacity:0.6;pointer-events:none">
+
+    <!-- Zone çizim canvas -->
+    <canvas id="zoneCanvas"
+            style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;display:none"></canvas>
+
+    <!-- İhlal uyarı bandı — video üzerinde alt kısım -->
+    <div class="viol-overlay" id="violOverlay">
+      <span style="font-size:16px">⚠</span>
+      <span id="violMsg">
+        {% if session.algorithm_type == 'zone_detector' %}ALAN İHLALİ{% else %}NESNE ALARMI{% endif %}
+      </span>
+      <span id="violCount" style="margin-left:auto;font-family:var(--font-mono);font-size:12px"></span>
+    </div>
+
+    <!-- Watermark -->
+    <div id="streamWatermark"
+         style="position:absolute;top:8px;left:10px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.5);pointer-events:none;display:none">
+      ZoViD · #{{ session.id }} · <span id="streamTime">--:--:--</span>
+    </div>
+  </div>
+
+  <!-- Zone araç çubuğu -->
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-top:1px solid var(--border);flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:600;color:var(--text-2)">Yasak Bölge</span>
+    {% if session.algorithm_type == 'zone_detector' %}
+    <button class="btn btn-ghost btn-sm" id="drawZoneBtn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+      Bölge Çiz
+    </button>
+    {% else %}
+    <button class="btn btn-ghost btn-sm" id="drawZoneBtn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+      İzleme Bölgesi Çiz
+    </button>
+    {% endif %}
+    <button class="btn btn-ghost btn-sm" id="clearZoneBtn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Temizle
+    </button>
+    <button class="btn btn-primary btn-sm" id="saveZoneBtn" style="display:none">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      Kaydet
+    </button>
+    <div id="zoneStatus" style="margin-left:auto">
+      {% if session.zone %}
+        <span class="badge badge-green">✓ Bölge tanımlı ({{ session.zone | length }} nokta)</span>
+      {% else %}
+        <span class="badge">Bölge tanımlı değil</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Canlı metrik çubuğu -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border)">
+    <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)">
+      <div style="font-size:9.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">
+        {% if session.algorithm_type == 'zone_detector' %}Kişi Sayısı{% else %}Nesne{% endif %}
+      </div>
+      <div class="metric-val" id="metricCount" style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text)">0</div>
+    </div>
+    <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)">
+      <div style="font-size:9.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Durum</div>
+      <div class="metric-val safe" id="metricStatus" style="font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--green)">GÜVENLİ</div>
+    </div>
+    <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)">
+      <div style="font-size:9.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Toplam İhlal</div>
+      <div class="metric-val" id="metricViolTotal" style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--text)">{{ session.violation_count }}</div>
+    </div>
+    <div style="padding:10px 14px;text-align:center">
+      <div style="font-size:9.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Süre</div>
+      <div class="metric-val" id="metricDuration" style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ Alt Satır: Log + Kaynak + Snapshot ═══════════════════════ -->
+<div style="display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start">
+
+  <!-- İhlal Log -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">
+        {% if session.algorithm_type == 'zone_detector' %}Alan İhlalleri{% else %}Nesne Alarmları{% endif %}
+      </span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="live-dot" id="logLiveDot" style="{% if session.status != 'active' %}display:none{% endif %}"></div>
+        <span id="logCount" style="font-family:var(--font-mono);font-size:10px;color:var(--text-3)">{{ session.violation_count }} kayıt</span>
+      </div>
+    </div>
+    <div id="logEntries" style="max-height:220px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:3px">
+      {% if session.violation_count == 0 %}
+      <div id="logEmpty" style="padding:20px;text-align:center;color:var(--text-3);font-size:12px">Henüz ihlal kaydı yok</div>
+      {% else %}
+        {% for v in recent_violations %}
+        <div class="log-entry {% if v.in_violation %}alarm{% endif %}">
+          <span class="log-time">{{ v.timestamp.strftime('%H:%M:%S') }}</span>
+          <span>
+            {% if session.algorithm_type == 'zone_detector' %}
+              {{ v.person_count }} kişi · alan ihlali
+            {% else %}
+              {{ v.person_count }} nesne · alarm
+            {% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Sağ kolon: Kaynak + Snapshot -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <!-- Kaynak -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Kaynak</span></div>
+      <div class="card-body" style="padding:10px 14px">
+        <table class="data-table" style="font-size:12px">
+          <tr>
+            <td style="width:70px;color:var(--text-3);font-size:11px">Tip</td>
+            <td><span class="badge">{{ session.source_type | upper }}</span></td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-3);font-size:11px">Değer</td>
+            <td class="mono truncate" style="max-width:180px;font-size:11px">{{ session.source_value or '—' }}</td>
+          </tr>
+          {% if session.started_at %}
+          <tr>
+            <td style="color:var(--text-3);font-size:11px">Başlangıç</td>
+            <td class="mono" style="font-size:11px">{{ session.started_at.strftime('%d.%m %H:%M') }}</td>
+          </tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    <!-- Snapshot -->
+    <div class="card" id="snapshotCard" style="{% if not session.violation_count %}display:none{% endif %}">
+      <div class="card-header"><span class="card-title">Son Snapshot</span></div>
+      <div class="card-body" style="padding:6px">
+        <img id="lastSnapshot" src="" alt="snapshot"
+             style="width:100%;border:1px solid var(--border);border-radius:4px;display:block">
+      </div>
+    </div>
+  </div>
+
+</div><!-- alt satır -->
+
+<!-- Hidden data -->
+<script>
+  const SESSION_ID   = {{ session.id }};
+  const SESSION_ALGO = '{{ session.algorithm_type }}';
+  const SESSION_STAT = '{{ session.status }}';
+  const INIT_ZONE    = {{ session.zone | tojson if session.zone else 'null' }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/canvas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/session.js') }}"></script>
+{% endblock %}

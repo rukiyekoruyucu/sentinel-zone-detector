@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giriş — ZoViD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800;900&family=Fira+Code:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+
+<body>
+  <div class="auth-wrap">
+    <aside class="auth-aside">
+      <div class="auth-logo-mark">ZV</div>
+      <div class="auth-logo-name">ZoViD</div>
+      <div class="auth-logo-tagline">Real-Time Zone Violation Detection</div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" style="margin-bottom:16px">{{ message }}</div>
+      {% endfor %}
+      {% endwith %}
+
+      <div class="auth-form-title">Giriş Yap</div>
+      <div class="auth-form-sub">Hesabınıza erişmek için kimliğinizi doğrulayın</div>
+
+      <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="off">
+        <div class="form-group">
+          <label>Kullanıcı Adı</label>
+          <input class="form-control" type="text" name="username" required autofocus placeholder="kullanici_adi">
+        </div>
+        <div class="form-group">
+          <label>Şifre</label>
+          <input class="form-control" type="password" name="password" required placeholder="••••••••">
+        </div>
+        <div class="checkbox-row" style="margin-bottom:20px">
+          <input type="checkbox" name="remember" id="remember">
+          <label for="remember" style="cursor:pointer">Oturumu açık tut</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-full btn-lg">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
+          Giriş Yap
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Hesabınız yok mu? <a href="{{ url_for('auth.register') }}">Kayıt olun</a>
+      </div>
+    </aside>
+
+    <div class="auth-panel">
+      <div class="auth-panel-bg"></div>
+      <div class="auth-panel-center">
+        <div class="auth-panel-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+        </div>
+        <div class="auth-panel-title">Real-Time Zone<br>Violation Detection</div>
+        <div class="auth-panel-desc">Gerçek zamanlı bölge ihlal tespiti ve yabancı nesne analizi</div>
+        <div style="margin-top:32px; display:flex; gap:20px; justify-content:center">
+          <div style="text-align:center">
+            <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--amber)">2</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);text-transform:uppercase">
+              Algoritma</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--amber)">RT</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);text-transform:uppercase">
+              Real-Time</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--amber)">AI</div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-3);text-transform:uppercase">Powered
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

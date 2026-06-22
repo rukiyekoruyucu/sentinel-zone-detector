@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kayıt — ZoViD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Fira+Code:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+
+<body>
+  <div class="auth-wrap">
+    <aside class="auth-aside">
+      <div class="auth-logo-mark">ZV</div>
+      <div class="auth-logo-name">ZoViD</div>
+      <div class="auth-logo-tagline">Real-Time Zone Violation Detection</div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" style="margin-bottom:16px">{{ message }}</div>
+      {% endfor %}
+      {% endwith %}
+
+      <div class="auth-form-title">Hesap Oluştur</div>
+      <div class="auth-form-sub" style="margin-bottom:24px">İlk kullanıcı otomatik olarak admin yetkisi alır</div>
+
+      <form method="POST" autocomplete="off">
+        <div class="form-group">
+          <label>Kullanıcı Adı</label>
+          <input class="form-control" type="text" name="username" required placeholder="kullanici_adi">
+        </div>
+        <div class="form-group">
+          <label>E-posta</label>
+          <input class="form-control" type="email" name="email" required placeholder="ornek@email.com">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Şifre</label>
+            <input class="form-control" type="password" name="password" required minlength="6" placeholder="••••••••"
+              autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label>Şifre Tekrar</label>
+            <input class="form-control" type="password" name="confirm_password" required minlength="6"
+              placeholder="••••••••" autocomplete="new-password">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-full btn-lg" style="margin-top:4px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <line x1="20" y1="8" x2="20" y2="14" />
+            <line x1="23" y1="11" x2="17" y2="11" />
+          </svg>
+          Kayıt Ol
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        Zaten hesabınız var mı? <a href="{{ url_for('auth.login') }}">Giriş yapın</a>
+      </div>
+    </aside>
+
+    <div class="auth-panel">
+      <div class="auth-panel-bg"></div>
+      <div class="auth-panel-center">
+        <div class="auth-panel-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+        </div>
+        <div class="auth-panel-title">Real-Time Zone<br>Violation Detection</div>
+        <div class="auth-panel-desc">Gerçek zamanlı bölge ihlal tespiti ve yabancı nesne analizi</div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

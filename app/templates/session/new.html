@@ -1,0 +1,549 @@
+{% extends 'base.html' %}
+{% block title %}Yeni Analiz{% endblock %}
+{% block breadcrumb %}ZoViD / <span>YENİ ANALİZ</span>{% endblock %}
+{% block page_title %}Yeni Analiz Başlat{% endblock %}
+
+{% block content %}
+<div class="wizard">
+
+  <!-- Adım göstergesi -->
+  <div class="wizard-steps">
+    <div class="wizard-step active" id="step1-indicator">
+      <div class="step-num">1</div>
+      Algoritma Seç
+    </div>
+    <div class="wizard-step" id="step2-indicator">
+      <div class="step-num">2</div>
+      Video Kaynağı
+    </div>
+    <div class="wizard-step" id="step3-indicator">
+      <div class="step-num">3</div>
+      Parametreler
+    </div>
+    <div class="wizard-step" id="step4-indicator">
+      <div class="step-num">4</div>
+      Başlat
+    </div>
+  </div>
+
+  <!-- ADIM 1: Algoritma -->
+  <div id="step1" class="wizard-pane">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Analiz Tipini Seçin</span></div>
+      <div class="card-body">
+        <div class="algo-selector">
+
+          <div class="algo-card" id="algoCardZone" onclick="selectAlgo('zone_detector')">
+            <div class="radio-dot"></div>
+            <span class="algo-card-badge badge badge-amber">Stabil</span>
+            <div class="algo-card-icon">🎯</div>
+            <div class="algo-card-name">Alan İhlal Algoritması</div>
+            <div class="algo-card-desc">Tanımlı yasak bölgeye insan girişini tespit eder. Poz tahmini (RTMPose) ile ayak konumu analizi yapar.</div>
+            <div style="margin-top:12px" class="tag-row">
+              <span class="badge">YOLO11n</span>
+              <span class="badge">RTMPose-T</span>
+              <span class="badge">OpenVINO</span>
+            </div>
+          </div>
+
+          <div class="algo-card" id="algoCardXG" onclick="selectAlgo('xg_detector')">
+            <div class="radio-dot"></div>
+            <span class="algo-card-badge badge badge-blue">Beta</span>
+            <div class="algo-card-icon">📦</div>
+            <div class="algo-card-name">İstenmeyen Obje Algoritması</div>
+            <div class="algo-card-desc">Tanımlı bölgede terk edilmiş / bırakılmış nesne tespit eder. MOG2 arka plan + HOG insan filtresi + XGBoost sınıflandırma.</div>
+            <div style="margin-top:12px" class="tag-row">
+              <span class="badge">Object Det.</span>
+              <span class="badge">Zone Alarm</span>
+              <span class="badge" style="background:var(--blue-dim);color:var(--blue)">Entegrasyon Hazır</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Oturum etiketi -->
+        <div class="form-group" style="margin-top:8px">
+          <label>Analiz Etiketi <span style="color:var(--text-3)">(opsiyonel)</span></label>
+          <input class="form-control" type="text" id="sessionLabel" placeholder="ör: Depo Kapı 3 — Gündüz">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="goStep(2)" id="step1Next" disabled>Devam →</button>
+    </div>
+  </div>
+
+  <!-- ADIM 2: Video Kaynağı -->
+  <div id="step2" class="wizard-pane" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Video Kaynağı</span></div>
+      <div class="card-body">
+        <div class="source-tabs">
+          <button class="source-tab active" data-type="rtsp">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+            IP Kamera (RTSP)
+          </button>
+          <button class="source-tab" data-type="file">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Video Dosyası
+          </button>
+          <button class="source-tab" data-type="webcam">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            Webcam
+          </button>
+        </div>
+
+        <!-- RTSP Panel -->
+        <div class="source-panel active" id="panel-rtsp">
+          <div class="form-group">
+            <label>RTSP / Stream Adresi</label>
+            <input class="form-control" type="text" id="rtspUrl" placeholder="rtsp://192.168.1.100:554/stream1">
+          </div>
+          {% if cameras %}
+          <div class="form-group">
+            <label>Kayıtlı Kameradan Seç</label>
+            <select class="form-control" id="cameraSelect">
+              <option value="">— Manuel giriş —</option>
+              {% for cam in cameras %}
+              <option value="{{ cam.source_value }}" data-id="{{ cam.id }}">{{ cam.name }} ({{ cam.source_type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- File Panel — Sürükle-Bırak veya Seçim -->
+        <div class="source-panel" id="panel-file">
+          <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+            <div class="file-drop-icon">📁</div>
+            <div style="font-weight:600;font-size:14px">Dosyayı buraya sürükleyin</div>
+            <div style="color:var(--text-3);font-size:12px;margin-top:4px">veya tıklayarak seçin</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-top:6px">MP4, AVI, MOV, MKV — max 500MB</div>
+            <div class="file-name" id="fileName" style="margin-top:8px;color:var(--cyan);font-family:var(--font-mono);font-size:11px"></div>
+          </div>
+          <!-- Gizli input, div içine değil dışına alındı ve css display:none yapıldı -->
+          <input type="file" id="fileInput" accept=".mp4,.avi,.mov,.mkv,.wmv,.m4v" style="display:none;">
+
+          <div id="uploadProgress" style="display:none;margin-top:10px">
+            <div class="progress-bar" style="margin-bottom:4px">
+              <div class="progress-fill" id="uploadFill" style="width:0%"></div>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3)" id="uploadStatus">Yükleniyor...</div>
+          </div>
+        </div>
+
+        <!-- Webcam Panel -->
+        <div class="source-panel" id="panel-webcam">
+          <div class="form-group">
+            <label>Kamera Indeksi</label>
+            <input class="form-control" type="number" id="webcamId" value="0" min="0" max="10" style="max-width:100px">
+            <div class="form-hint">0 = dahili kamera, 1 = ilk harici kamera</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between">
+      <button class="btn btn-ghost" onclick="goStep(1)">← Geri</button>
+      <button class="btn btn-primary" onclick="goStep(3)" id="step2Next">Devam →</button>
+    </div>
+  </div>
+
+  <!-- ADIM 3: Parametreler -->
+  <div id="step3" class="wizard-pane" style="display:none">
+
+    <!-- ZoneDetector parametreleri -->
+    <div id="paramsZone">
+      <div class="config-section">
+        <div class="config-section-title">
+          <span style="color:var(--amber)">■</span> Alan İhlal Algoritması — Model Parametreleri
+        </div>
+        <div class="config-section-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Detection Eşiği</label>
+              <div class="range-wrap">
+                <input type="range" id="detThr" min="0.1" max="0.9" step="0.05" value="0.35">
+                <span class="range-val" id="detThrVal">0.35</span>
+              </div>
+              <div class="form-hint">Kişi algılama güven eşiği (önerilen: 0.30-0.50)</div>
+            </div>
+            <div class="form-group">
+              <label>Keypoint Eşiği</label>
+              <div class="range-wrap">
+                <input type="range" id="kptThr" min="0.1" max="0.9" step="0.05" value="0.30">
+                <span class="range-val" id="kptThrVal">0.30</span>
+              </div>
+              <div class="form-hint">Poz tahmini keypoint güveni (önerilen: 0.25-0.40)</div>
+            </div>
+          </div>
+          <div style="background:var(--bg-2);border:1px solid var(--border);padding:12px;margin-top:4px">
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-bottom:6px">KULLANIM NOTU</div>
+            <div style="font-size:12px;color:var(--text-2)">Zone, session başlatıldıktan sonra canlı izleme ekranında çizilecektir. YOLO11n + RTMPose-T ile <strong style="color:var(--amber)">sol/sağ ayak bileği</strong> konumları zone poligonu ile karşılaştırılır.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XGDetector parametreleri -->
+    <div id="paramsXG" style="display:none">
+      <div class="config-section">
+        <div class="config-section-title">
+          <span style="color:var(--blue)">■</span> İstenmeyen Obje Algoritması — Model Parametreleri
+        </div>
+        <div class="config-section-body">
+          <!-- Model Seçimi -->
+          <div class="form-group" style="margin-bottom:16px">
+            <label style="font-weight:700">Kullanılacak Model</label>
+            <select class="form-control" id="xgModelSelect">
+              <option value="">Yükleniyor...</option>
+            </select>
+            <div class="form-hint">Modeli yoksa önce <a href="/training" style="color:var(--cyan)">Model Eğit</a> sayfasından eğitin</div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Güven Eşiği</label>
+              <div class="range-wrap">
+                <input type="range" id="xgConfThr" min="0.1" max="0.9" step="0.05" value="0.45">
+                <span class="range-val" id="xgConfThrVal">0.45</span>
+              </div>
+              <div class="form-hint">Nesne algılama güven eşiği</div>
+            </div>
+            <div class="form-group">
+              <label>Alarm Bekleme (sn)</label>
+              <div class="range-wrap">
+                <input type="range" id="xgCooldown" min="1" max="30" step="1" value="5">
+                <span class="range-val" id="xgCooldownVal">5</span>
+              </div>
+              <div class="form-hint">Tekrar alarm için bekleme süresi</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Minimum Nesne Alanı (piksel²)</label>
+            <div class="range-wrap">
+              <input type="range" id="xgMinArea" min="100" max="5000" step="100" value="500">
+              <span class="range-val" id="xgMinAreaVal">500</span>
+            </div>
+            <div class="form-hint">Bu alandan küçük tespitler yok sayılır</div>
+          </div>
+          <div class="form-group">
+            <label>Hedef Nesne Sınıfları <span style="color:var(--text-3)">(boş = tümü)</span></label>
+            <div class="class-select-grid" id="classGrid">
+              {% for cls in ['backpack','handbag','suitcase','bottle','cup','knife','scissors','laptop','cell phone','book','bicycle','car','motorcycle','person'] %}
+              <div class="class-chip" data-class="{{ cls }}" onclick="toggleClass(this)">
+                <span>{{ cls }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="form-hint" style="margin-top:8px">Seçili: <span id="selectedClassCount">0</span> sınıf — boş bırakılırsa tüm nesneler izlenir</div>
+          </div>
+        </div>
+      </div>
+      <div class="config-section">
+        <div class="config-section-title" style="color:var(--blue)">
+          <span>◈</span> Entegrasyon Durumu
+        </div>
+        <div class="config-section-body">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--bg-2);border:1px solid var(--border)">
+            <div style="font-size:20px;margin-top:2px">🔧</div>
+            <div>
+              <div style="font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--blue);margin-bottom:4px">MOG2 + HOG + XGBoost Pipeline'a Bağlı</div>
+              <div style="font-size:12px;color:var(--text-3);line-height:1.5">Terk edilen nesne tespiti için MOG2 arka plan çıkarma, HOG insan filtreleme ve XGBoost sınıflandırma adımları otomatik devreye girer. Mod işlevsel durumda.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:8px">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Geri</button>
+      <button class="btn btn-primary" onclick="goStep(4)">Devam →</button>
+    </div>
+  </div>
+
+  <!-- ADIM 4: Özet + Başlat -->
+  <div id="step4" class="wizard-pane" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Analiz Özeti</span></div>
+      <div class="card-body">
+        <table class="data-table">
+          <tr><td class="mono" style="width:160px;color:var(--text-3)">Algoritma</td><td id="sumAlgo">—</td></tr>
+          <tr><td class="mono" style="color:var(--text-3)">Kaynak Tipi</td><td id="sumSource">—</td></tr>
+          <tr><td class="mono" style="color:var(--text-3)">Etiket</td><td id="sumLabel" class="mono">—</td></tr>
+          <tr><td class="mono" style="color:var(--text-3)">Parametreler</td><td id="sumParams" class="mono">—</td></tr>
+        </table>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button class="btn btn-ghost" onclick="goStep(3)">← Geri</button>
+      <button class="btn btn-primary btn-lg" id="createBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Analizi Başlat
+      </button>
+    </div>
+  </div>
+
+</div><!-- .wizard -->
+
+<!-- Upload progress overlay -->
+<div class="upload-progress" id="uploadOverlay">
+  <div class="upload-box">
+    <div class="upload-pct" id="uploadPct">0%</div>
+    <div class="progress-bar" style="margin-bottom:12px">
+      <div class="progress-fill" id="uploadOverlayFill" style="width:0%"></div>
+    </div>
+    <div class="upload-label">Dosya Yükleniyor</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-3);margin-top:8px" id="uploadFileName"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedAlgo = null;
+let selectedSourceType = 'rtsp';
+let uploadedFilePath  = null;
+
+// ── Step navigation ───────────────────────────────────────────────
+function goStep(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById('step'+i).style.display = (i===n)?'block':'none';
+    const ind = document.getElementById('step'+i+'-indicator');
+    ind.classList.remove('active','done');
+    if (i < n) ind.classList.add('done');
+    if (i === n) ind.classList.add('active');
+  });
+  if (n === 4) buildSummary();
+}
+
+// ── Algo selection ────────────────────────────────────────────────
+function selectAlgo(type) {
+  selectedAlgo = type;
+  document.getElementById('algoCardZone').className = 'algo-card' + (type==='zone_detector'?' selected-zone':'');
+  document.getElementById('algoCardXG').className   = 'algo-card' + (type==='xg_detector'?' selected-xg':'');
+  document.getElementById('step1Next').disabled = false;
+  document.getElementById('paramsZone').style.display = type==='zone_detector'?'block':'none';
+  document.getElementById('paramsXG').style.display   = type==='xg_detector'?'block':'none';
+  if (type === 'xg_detector') loadXgModels();
+}
+
+async function loadXgModels() {
+  const sel = document.getElementById('xgModelSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Yükleniyor...</option>';
+  try {
+    const res  = await fetch('/api/training/models');
+    const data = await res.json();
+    const models = data.models || [];
+    if (!models.length) {
+      sel.innerHTML = '<option value="">⚠ Kayıtlı model yok — önce Model Eğit!</option>';
+    } else {
+      sel.innerHTML = models.map(m =>
+        `<option value="${m.safe_name}" ${m.is_active ? 'selected' : ''}>${m.name}${m.is_active ? ' (Aktif)' : ''}</option>`
+      ).join('');
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">⚠ Modeller yüklenemedi</option>';
+  }
+}
+
+// ── Source tabs (sadece ana kaynak sekmeler) ─────────────────────
+document.querySelectorAll('[data-type]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('[data-type]').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.source-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    selectedSourceType = tab.dataset.type;
+    document.getElementById('panel-'+selectedSourceType).classList.add('active');
+  });
+});
+
+// Camera select
+const camSel = document.getElementById('cameraSelect');
+if (camSel) {
+  camSel.addEventListener('change', () => {
+    if (camSel.value) document.getElementById('rtspUrl').value = camSel.value;
+  });
+}
+
+// ── File upload (drag-drop) ───────────────────────────────────────
+const fileDrop  = document.getElementById('fileDrop');
+const fileInput = document.getElementById('fileInput');
+
+if (fileDrop) {
+  fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+  fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+  fileDrop.addEventListener('drop', e => {
+    e.preventDefault(); fileDrop.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+}
+if (fileInput) {
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+}
+
+async function handleFile(file) {
+  const allowed = ['mp4','avi','mov','mkv','wmv','m4v'];
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!allowed.includes(ext)) {
+    alert('Desteklenmeyen format. Lütfen MP4, AVI, MOV veya MKV seçin.');
+    return;
+  }
+
+  document.getElementById('fileName').textContent = '📎 ' + file.name;
+  fileDrop.classList.add('has-file');
+
+  const overlay = document.getElementById('uploadOverlay');
+  document.getElementById('uploadFileName').textContent = file.name;
+  overlay.classList.add('show');
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const prog   = document.getElementById('uploadProgress');
+  const fill   = document.getElementById('uploadFill');
+  const status = document.getElementById('uploadStatus');
+  if (prog) { prog.style.display = 'block'; fill.style.width = '0%'; }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round(e.loaded / e.total * 100);
+      document.getElementById('uploadPct').textContent = pct + '%';
+      document.getElementById('uploadOverlayFill').style.width = pct + '%';
+      if (fill) fill.style.width = pct + '%';
+      if (status) status.textContent = `Yükleniyor... ${pct}%`;
+    }
+  };
+  xhr.onload = () => {
+    overlay.classList.remove('show');
+    if (xhr.status === 201) {
+      const data = JSON.parse(xhr.responseText);
+      uploadedFilePath = data.path;
+      fileDrop.classList.add('has-file');
+      if (status) status.textContent = '✓ Yükleme tamamlandı';
+    } else {
+      alert('Yükleme hatası');
+      fileDrop.classList.remove('has-file');
+      uploadedFilePath = null;
+    }
+  };
+  xhr.onerror = () => { overlay.classList.remove('show'); alert('Ağ hatası'); };
+  xhr.send(formData);
+}
+
+// ── Range sliders ──────────────────────────────────────────────────
+function bindRange(id, displayId) {
+  const el = document.getElementById(id);
+  const dv = document.getElementById(displayId);
+  if (!el) return;
+  el.addEventListener('input', () => dv.textContent = el.value);
+}
+bindRange('detThr','detThrVal');
+bindRange('kptThr','kptThrVal');
+bindRange('xgConfThr','xgConfThrVal');
+bindRange('xgCooldown','xgCooldownVal');
+bindRange('xgMinArea','xgMinAreaVal');
+
+// ── XG class selector ──────────────────────────────────────────────
+function toggleClass(el) {
+  el.classList.toggle('selected');
+  const cnt = document.querySelectorAll('.class-chip.selected').length;
+  document.getElementById('selectedClassCount').textContent = cnt;
+}
+
+// ── Summary ────────────────────────────────────────────────────────
+function buildSummary() {
+  document.getElementById('sumAlgo').innerHTML =
+    selectedAlgo === 'zone_detector'
+      ? '<span class="badge badge-amber">Alan İhlal Algoritması</span>'
+      : '<span class="badge badge-blue">İstenmeyen Obje Algoritması</span>';
+  document.getElementById('sumSource').innerHTML =
+    `<span class="badge">${selectedSourceType.toUpperCase()}</span>`;
+  const lbl = document.getElementById('sessionLabel').value || '—';
+  document.getElementById('sumLabel').textContent = lbl;
+  if (selectedAlgo === 'zone_detector') {
+    document.getElementById('sumParams').textContent =
+      `det=${document.getElementById('detThr').value}  kpt=${document.getElementById('kptThr').value}`;
+  } else {
+    document.getElementById('sumParams').textContent =
+      `conf=${document.getElementById('xgConfThr').value}  cooldown=${document.getElementById('xgCooldown').value}s  area>=${document.getElementById('xgMinArea').value}px²`;
+  }
+}
+
+// ── Create session ─────────────────────────────────────────────────
+document.getElementById('createBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('createBtn');
+  btn.disabled = true;
+  btn.textContent = 'Oluşturuluyor...';
+
+  let sourceValue = '';
+  if (selectedSourceType === 'rtsp') {
+    sourceValue = document.getElementById('rtspUrl').value.trim();
+    if (!sourceValue) {
+      alert('RTSP adresi giriniz');
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Analizi Başlat';
+      return;
+    }
+  } else if (selectedSourceType === 'file') {
+    if (!uploadedFilePath) {
+      alert('Önce bir video dosyası yükleyin');
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Analizi Başlat';
+      return;
+    }
+    sourceValue = uploadedFilePath;
+  } else {
+    sourceValue = document.getElementById('webcamId').value;
+  }
+
+  const body = {
+    algorithm_type: selectedAlgo,
+    session_label:  document.getElementById('sessionLabel').value.trim() || null,
+    source_type:    selectedSourceType,
+    source_value:   sourceValue,
+  };
+
+  if (selectedAlgo === 'zone_detector') {
+    body.det_score_thr = parseFloat(document.getElementById('detThr').value);
+    body.kpt_thr       = parseFloat(document.getElementById('kptThr').value);
+  } else {
+    body.xg_confidence_thr  = parseFloat(document.getElementById('xgConfThr').value);
+    body.xg_alarm_cooldown  = parseInt(document.getElementById('xgCooldown').value);
+    body.xg_min_area        = parseInt(document.getElementById('xgMinArea').value);
+    body.xg_target_classes  = [...document.querySelectorAll('.class-chip.selected')].map(el => el.dataset.class);
+    const modelSel = document.getElementById('xgModelSelect');
+    if (modelSel && modelSel.value) body.xg_model_name = modelSel.value;
+  }
+
+  try {
+    const res  = await fetch('/api/sessions', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body),
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      window.location.href = '/sessions/' + data.id;
+    } else {
+      let errorMsg = 'Bilinmeyen hata';
+      try {
+        const data = await res.json();
+        errorMsg = data.error || errorMsg;
+      } catch (e) {
+        errorMsg = `Sunucu hatası: ${res.status} ${res.statusText}`;
+      }
+      alert('Hata: ' + errorMsg);
+      btn.disabled = false;
+      btn.innerHTML = 'Analizi Başlat';
+    }
+  } catch (err) {
+    alert('Ağ hatası veya sunucuya ulaşılamadı: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Analizi Başlat';
+  }
+});
+</script>
+{% endblock %}

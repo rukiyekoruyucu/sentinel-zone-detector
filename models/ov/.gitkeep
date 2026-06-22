@@ -1,0 +1,8 @@
+# OpenVINO model files (.xml + .bin) go here — not tracked by git (binary, large files)
+# 
+# Expected files:
+#   models/ov/yolo11n.xml      + yolo11n.bin    (Zone Detector — person detection)
+#   models/ov/rtmpose-t.xml    + rtmpose-t.bin  (Zone Detector — pose estimation)
+#   models/ov/xg_detector.xml  + xg_detector.bin (XG Detector — proprietary)
+#
+# See README.md → "Model Files" section for download/conversion instructions.

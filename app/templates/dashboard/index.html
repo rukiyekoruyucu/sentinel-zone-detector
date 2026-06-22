@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb %}ZoViD / <span>OVERVIEW</span>{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('session_view.new_session') }}" class="btn btn-primary btn-sm">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Yeni Analiz
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Algoritma karşılaştırma satırı -->
+<div class="algo-compare">
+  <div class="algo-cell zone">
+    <div class="algo-label">Algoritma 01</div>
+    <div class="algo-name">Zone Detector</div>
+    <div class="algo-stats">
+      <div class="algo-stat-item">
+        <div class="algo-stat-val" id="zdSessions">—</div>
+        <div class="algo-stat-key">Session</div>
+      </div>
+      <div class="algo-stat-item">
+        <div class="algo-stat-val" id="zdViolations">—</div>
+        <div class="algo-stat-key">Toplam İhlal</div>
+      </div>
+      <div class="algo-stat-item">
+        <div class="algo-stat-val" id="zdActive">—</div>
+        <div class="algo-stat-key">Aktif</div>
+      </div>
+    </div>
+  </div>
+  <div class="algo-cell xg">
+    <div class="algo-label">Algoritma 02</div>
+    <div class="algo-name">XG Detector <span style="font-size:12px;color:var(--blue);opacity:.7">(Beta)</span></div>
+    <div class="algo-stats">
+      <div class="algo-stat-item">
+        <div class="algo-stat-val" id="xgSessions">—</div>
+        <div class="algo-stat-key">Session</div>
+      </div>
+      <div class="algo-stat-item">
+        <div class="algo-stat-val" id="xgViolations">—</div>
+        <div class="algo-stat-key">Toplam Alarm</div>
+      </div>
+      <div class="algo-stat-item">
+        <div class="algo-stat-val" id="xgActive">—</div>
+        <div class="algo-stat-key">Aktif</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Genel istatistikler -->
+<div class="stats-row" style="margin-bottom:20px">
+  <div class="stat-cell">
+    <div class="stat-cell-label">Toplam Session</div>
+    <div class="stat-cell-value" id="totalSessions">—</div>
+    <div class="stat-cell-sub">tüm zamanlar</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Aktif Session</div>
+    <div class="stat-cell-value green" id="activeSessions">—</div>
+    <div class="stat-cell-sub">şu an çalışan</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Bugün İhlal</div>
+    <div class="stat-cell-value red" id="todayViolations">—</div>
+    <div class="stat-cell-sub">tüm algoritmalar</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Bu Hafta</div>
+    <div class="stat-cell-value amber" id="weekViolations">—</div>
+    <div class="stat-cell-sub">son 7 gün</div>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <!-- Grafik -->
+  <div class="card span-2">
+    <div class="card-header">
+      <span class="card-title">Son 7 Gün — İhlal Trendi</span>
+      <div class="gap-8">
+        <span class="badge badge-amber">Zone Detector</span>
+        <span class="badge badge-blue">XG Detector</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap">
+        <canvas id="weeklyChart" height="72"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Son Sessionlar -->
+  <div class="card span-2">
+    <div class="card-header">
+      <span class="card-title">Son Analizler</span>
+      <div class="gap-8">
+        <select class="form-control" id="algoFilter" style="width:140px;padding:4px 8px;font-size:11px">
+          <option value="">Tümü</option>
+          <option value="zone_detector">Zone Detector</option>
+          <option value="xg_detector">XG Detector</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Etiket / Kaynak</th>
+            <th>Algoritma</th>
+            <th>Durum</th>
+            <th>Başlangıç</th>
+            <th>Süre</th>
+            <th>İhlal</th>
+            <th>İşlem</th>
+          </tr>
+        </thead>
+        <tbody id="sessionsTbody">
+          <tr><td colspan="8" class="text-center text-muted" style="padding:32px">Yükleniyor...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}Admin{% endblock %}
+{% block breadcrumb %}ZoViD / <span>YÖNETİM</span>{% endblock %}
+{% block page_title %}Admin Panel{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- Kullanıcı Yönetimi -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Kullanıcılar</span></div>
+    <div class="inline-form">
+      <form method="POST" action="{{ url_for('admin.create_user') }}" style="display:flex;flex-wrap:wrap;gap:8px;width:100%">
+        <input class="form-control" type="text" name="username" placeholder="Kullanıcı adı" required style="flex:2;min-width:120px">
+        <input class="form-control" type="email" name="email" placeholder="E-posta" required style="flex:2;min-width:140px">
+        <input class="form-control" type="password" name="password" placeholder="Şifre" required style="flex:1;min-width:110px">
+        <select class="form-control" name="role" style="flex:1;min-width:90px">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">+ Ekle</button>
+      </form>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>#</th><th>Kullanıcı</th><th>E-posta</th><th>Rol</th><th>Kayıt</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td class="mono" style="color:var(--text-3)">{{ u.id }}</td>
+          <td>{{ u.username }}</td>
+          <td class="mono" style="font-size:11px">{{ u.email }}</td>
+          <td><span class="badge {% if u.role=='admin' %}badge-amber{% endif %}">{{ u.role }}</span></td>
+          <td class="mono" style="font-size:11px">{{ u.created_at.strftime('%d.%m.%Y') }}</td>
+          <td>
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Sil?')">Sil</button>
+            </form>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Kamera Yönetimi -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Kameralar</span></div>
+    <div class="inline-form">
+      <form method="POST" action="{{ url_for('admin.create_camera') }}" style="display:flex;flex-wrap:wrap;gap:8px;width:100%">
+        <input class="form-control" type="text" name="name" placeholder="Kamera adı" required style="flex:2;min-width:120px">
+        <select class="form-control" name="source_type" style="flex:1;min-width:90px">
+          <option value="rtsp">RTSP</option>
+          <option value="webcam">Webcam</option>
+        </select>
+        <input class="form-control" type="text" name="source_value" placeholder="rtsp://... veya indeks" required style="flex:3;min-width:160px">
+        <button type="submit" class="btn btn-primary btn-sm">+ Ekle</button>
+      </form>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>#</th><th>Ad</th><th>Tip</th><th>Adres</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% if cameras %}
+          {% for c in cameras %}
+          <tr>
+            <td class="mono" style="color:var(--text-3)">{{ c.id }}</td>
+            <td>{{ c.name }}</td>
+            <td><span class="badge">{{ c.source_type | upper }}</span></td>
+            <td class="mono truncate" style="font-size:11px;max-width:200px">{{ c.source_value }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('admin.delete_camera', camera_id=c.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Sil?')">Sil</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="5" class="text-center text-muted" style="padding:24px">Henüz kamera yok</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Sistem Durumu -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Sistem Durumu</span></div>
+    <div class="card-body">
+      <table class="data-table" style="font-size:12px">
+        <tr>
+          <td class="mono" style="color:var(--text-3);width:160px">Zone Detector</td>
+          <td>
+            <span class="badge {% if has_detector %}badge-green{% else %}badge-red{% endif %}">
+              {% if has_detector %}✓ Yüklü{% else %}✗ Yüklenemedi{% endif %}
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--text-3)">XG Detector</td>
+          <td>
+            <span class="badge {% if has_xg %}badge-green{% elif xg_stub %}badge-amber{% else %}badge-red{% endif %}">
+              {% if has_xg %}✓ Yüklü{% elif xg_stub %}⚙ Entegrasyon Bekleniyor{% else %}✗ Yüklenemedi{% endif %}
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--text-3)">Aktif Session</td>
+          <td><span class="badge badge-green">{{ active_sessions }}</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--text-3)">Veritabanı</td>
+          <td><span class="badge badge-green">✓ Bağlı</span></td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--text-3)">Sürüm</td>
+          <td class="mono" style="color:var(--amber)">ZoViD v1.0</td>
+        </tr>
+      </table>
+
+      <!-- XG entegrasyon rehberi -->
+      <div style="margin-top:16px;background:var(--bg-2);border:1px solid var(--border);padding:14px">
+        <div style="font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px">⚙ XG Detector Entegrasyon Rehberi</div>
+        <ol style="font-family:var(--font-mono);font-size:11px;color:var(--text-2);line-height:1.8;padding-left:20px">
+          <li><code style="color:var(--amber)">inference/xg_detector.py</code> dosyasını düzenleyin</li>
+          <li><code style="color:var(--amber)">_load()</code> metodunda modelinizi yükleyin</li>
+          <li><code style="color:var(--amber)">process_image()</code> ile çıkarım yapın (boxes, scores, classes döndürün)</li>
+          <li><code style="color:var(--amber)">self._ready = True</code> satırını aktif edin</li>
+          <li>Sunucuyu yeniden başlatın — stream manager otomatik devreye girer</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Temizleme -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Bakım</span></div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <form method="POST" action="{{ url_for('admin.cleanup_sessions') }}">
+          <button type="submit" class="btn btn-ghost w-full" onclick="return confirm('Tüm durdurulmuş sessionlar silinsin mi?')">
+            🗑 Durdurulmuş Sessionları Temizle
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.cleanup_snapshots') }}">
+          <input type="number" name="days" value="30" min="1" max="365" class="form-control" style="width:80px;display:inline-block">
+          <button type="submit" class="btn btn-ghost" onclick="return confirm('Eski snapshotlar silinsin mi?')">
+            🗑 Eski Snapshotları Temizle (gün)
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

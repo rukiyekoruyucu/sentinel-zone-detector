@@ -1,0 +1,976 @@
+{% extends 'base.html' %}
+{% block title %}Model Eğitimi{% endblock %}
+{% block breadcrumb %}ZoViD / <span>MODEL EĞİTİMİ</span>{% endblock %}
+{% block page_title %}İstenmeyen Obje — Model Eğitimi{% endblock %}
+
+{% block head %}
+<style>
+/* ── Eğitim sayfasına özgü stiller ─────────────────────────────────── */
+.train-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 16px;
+  align-items: start;
+}
+
+.train-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.train-card-header {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.train-card-body {
+  padding: 16px;
+}
+
+/* ── Video seçim alanı ─────────────────────────────────────────────── */
+.vid-drop {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--bg-2);
+}
+.vid-drop:hover, .vid-drop.dragover {
+  border-color: var(--cyan);
+  background: var(--cyan-dim);
+}
+.vid-drop.has-file {
+  border-color: var(--green);
+  background: var(--green-dim, rgba(34,197,94,.06));
+}
+.vid-drop-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* ── Timeline slider ────────────────────────────────────────────────── */
+.timeline-wrap {
+  position: relative;
+  height: 60px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+.tl-bar {
+  position: absolute;
+  top: 0; bottom: 0;
+  opacity: .85;
+}
+.tl-bar.normal  { background: linear-gradient(90deg, #22c55e88, #22c55e); }
+.tl-bar.anomaly { background: linear-gradient(90deg, #ef444488, #ef4444); }
+.tl-bar.test    { background: repeating-linear-gradient(45deg, #64748b22, #64748b22 4px, transparent 4px, transparent 8px); }
+.tl-label {
+  position: absolute;
+  bottom: 4px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+  padding: 1px 4px;
+  pointer-events: none;
+}
+
+/* ── Zaman aralığı giriş ────────────────────────────────────────────── */
+.time-range-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.time-input-wrap {
+  position: relative;
+}
+.time-input-wrap input {
+  padding-right: 30px;
+}
+.time-unit {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+/* ── İlerleme çubuğu ────────────────────────────────────────────────── */
+.progress-ring-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.progress-ring {
+  transform: rotate(-90deg);
+}
+.progress-ring-circle {
+  transition: stroke-dashoffset .4s ease;
+}
+
+/* ── Log kutusu ──────────────────────────────────────────────────────── */
+.log-box {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #94a3b8;
+  max-height: 220px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.log-box .log-ok   { color: #4ade80; }
+.log-box .log-warn { color: #fbbf24; }
+.log-box .log-err  { color: #f87171; }
+.log-box .log-info { color: #67e8f9; }
+
+/* ── Sonuç kartı ─────────────────────────────────────────────────────── */
+.metric-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.metric-box {
+  padding: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+.metric-box .val {
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--cyan);
+}
+.metric-box .lbl {
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-top: 2px;
+}
+
+.cm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 10px 0;
+}
+.cm-cell {
+  padding: 8px;
+  border-radius: 6px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+.cm-cell.tp { background: #dcfce7; color: #15803d; }
+.cm-cell.fp { background: #fee2e2; color: #b91c1c; }
+.cm-cell.fn { background: #fef3c7; color: #b45309; }
+.cm-cell.tn { background: #e0f2fe; color: #0369a1; }
+.cm-cell .cm-lbl { font-size: 9px; font-weight: 400; display: block; margin-top: 2px; }
+
+/* ── Adım indikatörü ─────────────────────────────────────────────────── */
+.train-steps {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.train-step {
+  flex: 1;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  border-right: 1px solid var(--border);
+  position: relative;
+  transition: all .2s;
+}
+.train-step:last-child { border-right: none; }
+.train-step.active  { color: var(--cyan); background: var(--cyan-dim); }
+.train-step.done    { color: var(--green); background: var(--green-dim, rgba(34,197,94,.06)); }
+.train-step .step-n { display: block; font-size: 16px; font-weight: 800; font-family: var(--font-head); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Adım Göstergesi -->
+<div class="train-steps">
+  <div class="train-step active" id="step-ind-1"><span class="step-n">1</span> Video Seç</div>
+  <div class="train-step" id="step-ind-2"><span class="step-n">2</span> Zaman Ayarla</div>
+  <div class="train-step" id="step-ind-3"><span class="step-n">3</span> Parametreler</div>
+  <div class="train-step" id="step-ind-4"><span class="step-n">4</span> Eğit</div>
+  <div class="train-step" id="step-ind-5"><span class="step-n">5</span> Sonuç</div>
+</div>
+
+<div class="train-layout">
+
+  <!-- Sol sütun: Adımlar -->
+  <div>
+
+    <!-- ADIM 1: Video Seçimi -->
+    <div id="pane-1">
+      <div class="train-card">
+        <div class="train-card-header">
+          <span style="font-size:16px">📂</span> Eğitim Videosu Seç
+        </div>
+        <div class="train-card-body">
+          <div class="vid-drop" id="vidDrop" onclick="document.getElementById('vidInput').click()">
+            <div class="vid-drop-icon">🎬</div>
+            <div style="font-weight:600;font-size:14px">Videoyu buraya sürükleyin</div>
+            <div style="color:var(--text-3);font-size:12px;margin-top:4px">veya tıklayarak seçin</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-top:6px">MP4, AVI, MOV, MKV</div>
+            <div id="vidFileName" style="margin-top:8px;color:var(--cyan);font-family:var(--font-mono);font-size:11px;font-weight:600"></div>
+            <input type="file" id="vidInput" accept=".mp4,.avi,.mov,.mkv,.wmv,.m4v" hidden>
+          </div>
+
+          <div id="vidProgress" style="display:none;margin-top:12px">
+            <div class="progress-bar" style="margin-bottom:6px">
+              <div class="progress-fill" id="vidUploadFill" style="width:0%"></div>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3)" id="vidUploadStatus">Yükleniyor...</div>
+          </div>
+
+          <div id="vidInfoBox" style="display:none;margin-top:14px;padding:12px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px">
+            <div style="font-size:10px;font-weight:600;color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Video Bilgileri</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+              <div><span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text)" id="vidFps">—</span><div style="font-size:10px;color:var(--text-3)">FPS</div></div>
+              <div><span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text)" id="vidDuration">—</span><div style="font-size:10px;color:var(--text-3)">Süre (sn)</div></div>
+              <div><span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text)" id="vidRes">—</span><div style="font-size:10px;color:var(--text-3)">Çözünürlük</div></div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:14px">
+            <button class="btn btn-primary" id="step1Next" disabled onclick="goStep(2)">Devam →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADIM 2: Zaman Aralıkları -->
+    <div id="pane-2" style="display:none">
+      <div class="train-card">
+        <div class="train-card-header">
+          <span style="font-size:16px">⏱</span> Zaman Aralıklarını Belirle
+        </div>
+        <div class="train-card-body">
+
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:14px;background:var(--cyan-dim);padding:10px;border-radius:8px;border-left:3px solid var(--cyan)">
+            <strong>Nasıl çalışır?</strong><br>
+            Video içindeki <span style="color:var(--green);font-weight:600">Normal</span> bölge (örn: boş ortam) ve
+            <span style="color:var(--red);font-weight:600">Anomali</span> bölgesini (örn: terk edilmiş nesne) belirtin.
+            İkisi arasındaki bölge otomatik <em>test verisi</em> olarak ayrılır.
+          </div>
+
+          <!-- Timeline görsel -->
+          <div class="timeline-wrap" id="timeline">
+            <div class="tl-bar test" id="tlTest" style="left:0;right:0"></div>
+            <div class="tl-bar normal" id="tlNormal" style="left:0;width:27%">
+              <span class="tl-label" style="left:4px">Normal</span>
+            </div>
+            <div class="tl-bar anomaly" id="tlAnomaly" style="right:0;width:27%">
+              <span class="tl-label" style="right:4px">Anomali</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-bottom:16px">
+            <span>0 sn</span>
+            <span id="tlMid">—</span>
+            <span id="tlEnd">—</span>
+          </div>
+
+          <!-- Normal bölge -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span>
+              Normal Bölge (sn)
+            </div>
+            <div class="time-range-grid">
+              <div>
+                <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Başlangıç</label>
+                <div class="time-input-wrap">
+                  <input class="form-control" type="number" id="normalStart" value="0" min="0" step="0.5" oninput="updateTimeline()">
+                  <span class="time-unit">sn</span>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Bitiş</label>
+                <div class="time-input-wrap">
+                  <input class="form-control" type="number" id="normalEnd" value="20" min="0" step="0.5" oninput="updateTimeline()">
+                  <span class="time-unit">sn</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Anomali bölge -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <span style="width:10px;height:10px;background:var(--red);border-radius:2px;display:inline-block"></span>
+              Anomali Bölge (sn)
+            </div>
+            <div class="time-range-grid">
+              <div>
+                <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Başlangıç</label>
+                <div class="time-input-wrap">
+                  <input class="form-control" type="number" id="anomalyStart" value="53" min="0" step="0.5" oninput="updateTimeline()">
+                  <span class="time-unit">sn</span>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Bitiş</label>
+                <div class="time-input-wrap">
+                  <input class="form-control" type="number" id="anomalyEnd" value="73" min="0" step="0.5" oninput="updateTimeline()">
+                  <span class="time-unit">sn</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="rangeWarn" style="display:none;padding:8px 12px;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#b91c1c;margin-bottom:10px"></div>
+
+          <div style="display:flex;justify-content:space-between">
+            <button class="btn btn-ghost" onclick="goStep(1)">← Geri</button>
+            <button class="btn btn-primary" id="step2Next" onclick="goStep(3)">Devam →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADIM 3: Parametreler -->
+    <div id="pane-3" style="display:none">
+      <div class="train-card">
+        <div class="train-card-header">
+          <span style="font-size:16px">⚙️</span> Eğitim Parametreleri
+        </div>
+        <div class="train-card-body">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Frame Atlama</label>
+              <div class="range-wrap">
+                <input type="range" id="frameSkip" min="1" max="5" step="1" value="1">
+                <span class="range-val" id="frameSkipVal">1</span>
+              </div>
+              <div class="form-hint">Her N karede 1 özellik çıkar — hız ↑ ama veri ↓</div>
+            </div>
+            <div class="form-group">
+              <label>Maksimum Örnek</label>
+              <div class="range-wrap">
+                <input type="range" id="maxSamples" min="200" max="5000" step="100" value="2000">
+                <span class="range-val" id="maxSamplesVal">2000</span>
+              </div>
+              <div class="form-hint">Sınıf başına maksimum örnek sayısı</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Augmentation Çarpanı</label>
+              <div class="range-wrap">
+                <input type="range" id="augMult" min="1" max="10" step="1" value="5">
+                <span class="range-val" id="augMultVal">5</span>
+              </div>
+              <div class="form-hint">Gürültü eklenerek veri çoğaltma (1 = kapalı)</div>
+            </div>
+            <div class="form-group">
+              <label>Alarm Eşiği</label>
+              <div class="range-wrap">
+                <input type="range" id="threshold" min="0.3" max="0.9" step="0.05" value="0.65">
+                <span class="range-val" id="thresholdVal">0.65</span>
+              </div>
+              <div class="form-hint">Model skoru bu değerin üzerindeyse ALARM</div>
+            </div>
+          </div>
+
+          <!-- Model Adı -->
+          <div class="form-group" style="margin-bottom:14px">
+            <label style="font-weight:600">Model Adı <span style="color:var(--text-3);font-weight:400">(isteğe bağlı)</span></label>
+            <input class="form-control" type="text" id="modelName" placeholder="örn: Giriş Kapısı, Depo Alanı..." maxlength="64">
+            <div class="form-hint">Boş bırakılırsa otomatik isim (tarih/saat) verilir</div>
+          </div>
+
+          <div style="padding:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-2)">
+            <strong>Warmup Frames:</strong> 60 (sabit — MOG2 ısınması için)<br>
+            <strong>K-Fold:</strong> 5 (sabit — daha sağlam genelleme)
+          </div>
+
+          <div style="display:flex;justify-content:space-between;margin-top:14px">
+            <button class="btn btn-ghost" onclick="goStep(2)">← Geri</button>
+            <button class="btn btn-primary" onclick="goStep(4)">Eğitimi Başlat →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADIM 4: Eğitim Süreci -->
+    <div id="pane-4" style="display:none">
+      <div class="train-card">
+        <div class="train-card-header">
+          <span style="font-size:16px">🚀</span> Eğitim Devam Ediyor...
+          <div id="trainStatus" style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text-3)">Başlatılıyor...</div>
+        </div>
+        <div class="train-card-body">
+
+          <!-- Dairesel progress -->
+          <div class="progress-ring-wrap">
+            <div style="position:relative;width:140px;height:140px">
+              <svg class="progress-ring" width="140" height="140">
+                <circle stroke="#e2e8f0" stroke-width="10" fill="transparent" r="60" cx="70" cy="70"/>
+                <circle class="progress-ring-circle" id="ringCircle"
+                        stroke="var(--cyan)" stroke-width="10" fill="transparent"
+                        r="60" cx="70" cy="70"
+                        stroke-dasharray="377"
+                        stroke-dashoffset="377"
+                        stroke-linecap="round"/>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--text)" id="ringPct">0%</div>
+                <div style="font-size:9px;color:var(--text-3);text-transform:uppercase">İlerleme</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log kutusu -->
+          <div class="log-box" id="logBox"></div>
+
+          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+            <button class="btn btn-danger btn-sm" id="cancelBtn" onclick="cancelTraining()">İptal Et</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADIM 5: Sonuç -->
+    <div id="pane-5" style="display:none">
+      <div class="train-card">
+        <div class="train-card-header">
+          <span style="font-size:16px" id="resultIcon">✅</span>
+          <span id="resultTitle">Eğitim Tamamlandı</span>
+        </div>
+        <div class="train-card-body">
+
+          <div id="resultSuccess" style="display:none">
+            <div class="metric-grid-2" style="margin-bottom:12px">
+              <div class="metric-box">
+                <div class="val" id="resAuc">—</div>
+                <div class="lbl">ROC-AUC</div>
+              </div>
+              <div class="metric-box">
+                <div class="val" id="resF1">—</div>
+                <div class="lbl">F1-Score</div>
+              </div>
+              <div class="metric-box">
+                <div class="val" id="resPrecision">—</div>
+                <div class="lbl">Precision</div>
+              </div>
+              <div class="metric-box">
+                <div class="val" id="resRecall">—</div>
+                <div class="lbl">Recall</div>
+              </div>
+            </div>
+
+            <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">Confusion Matrix</div>
+            <div class="cm-grid">
+              <div class="cm-cell tp"><span id="cmTp">—</span><span class="cm-lbl">Doğru Pozitif</span></div>
+              <div class="cm-cell fp"><span id="cmFp">—</span><span class="cm-lbl">Yanlış Pozitif</span></div>
+              <div class="cm-cell fn"><span id="cmFn">—</span><span class="cm-lbl">Yanlış Negatif</span></div>
+              <div class="cm-cell tn"><span id="cmTn">—</span><span class="cm-lbl">Doğru Negatif</span></div>
+            </div>
+
+          <div style="padding:10px;background:#dcfce7;border-radius:8px;font-size:12px;color:#15803d;margin-top:12px" id="savedModelInfo">
+              ✓ Model kaydedildi ve XGDetector yüklendi. Artık analiz başlatabilirsiniz.
+            </div>
+          </div>
+
+          <div id="resultError" style="display:none;padding:12px;background:#fee2e2;border-radius:8px;font-size:12px;color:#b91c1c">
+            <strong>Hata:</strong> <span id="errMsg">—</span>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="btn btn-ghost" onclick="goStep(1)">↺ Yeniden Eğit</button>
+            <a href="{{ url_for('session_view.new_session') }}" class="btn btn-primary">▶ Analiz Başlat</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sol sütun -->
+
+  <!-- Sağ sütun: Özet + Kaydedilmiş Modeller -->
+  <div>
+    <div class="train-card" style="position:sticky;top:20px">
+      <div class="train-card-header">
+        <span style="font-size:16px">📋</span> Özet
+      </div>
+      <div class="train-card-body">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 0;color:var(--text-3);width:110px">Video</td>
+            <td style="padding:6px 0;font-family:var(--font-mono);font-size:10px;word-break:break-all" id="sumVideo">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 0;color:var(--text-3)">Süre</td>
+            <td style="padding:6px 0;font-family:var(--font-mono);font-size:11px" id="sumDuration">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 0;color:var(--green);font-weight:600">Normal</td>
+            <td style="padding:6px 0;font-family:var(--font-mono);font-size:11px" id="sumNormal">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 0;color:var(--red);font-weight:600">Anomali</td>
+            <td style="padding:6px 0;font-family:var(--font-mono);font-size:11px" id="sumAnomaly">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 0;color:var(--text-3)">Test</td>
+            <td style="padding:6px 0;font-family:var(--font-mono);font-size:11px" id="sumTest">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 0;color:var(--text-3)">Eşik</td>
+            <td style="padding:6px 0;font-family:var(--font-mono);font-size:11px" id="sumThreshold">0.65</td>
+          </tr>
+        </table>
+
+        <div style="margin-top:12px;padding:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:10px;font-weight:600;color:var(--text-3);margin-bottom:6px;text-transform:uppercase">YOLO + Ensemble</div>
+          <div style="font-size:11px;color:var(--text-2);line-height:1.5">
+            MOG2 → Kontur → YOLO insan filtresi → 30-dim özellik vektörü →
+            XGBoost + LightGBM + CatBoost stacking → Logistic Regression meta
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kaydedilmiş Modeller -->
+    <div class="train-card" style="margin-top:16px">
+      <div class="train-card-header">
+        <span style="font-size:16px">💾</span> Kaydedilmiş Modeller
+        <button class="btn btn-ghost btn-sm" onclick="loadModels()" style="margin-left:auto;padding:3px 8px">↻</button>
+      </div>
+      <div class="train-card-body" style="padding:8px">
+        <div id="modelList" style="display:flex;flex-direction:column;gap:6px">
+          <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px">Yükleniyor...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /train-layout -->
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let currentStep    = 1;
+let uploadedPath   = null;
+let videoDuration  = 0;
+let videoFps       = 30;
+let pollInterval   = null;
+
+// ── Adım geçişi ────────────────────────────────────────────────────────
+function goStep(n) {
+  // Validation
+  if (n === 2 && !uploadedPath) {
+    alert('Önce bir video yükleyin');
+    return;
+  }
+  if (n === 3) {
+    if (!validateRanges()) return;
+    updateSummary();
+  }
+  if (n === 4) {
+    startTraining();
+    return;   // startTraining içinde goStep(4) çağrılacak
+  }
+
+  [1,2,3,4,5].forEach(i => {
+    document.getElementById('pane-'+i).style.display = (i===n) ? '' : 'none';
+    const ind = document.getElementById('step-ind-'+i);
+    ind.classList.remove('active','done');
+    if (i < n) ind.classList.add('done');
+    if (i === n) ind.classList.add('active');
+  });
+  currentStep = n;
+}
+
+// ── Video yükleme ──────────────────────────────────────────────────────
+const vidDrop  = document.getElementById('vidDrop');
+const vidInput = document.getElementById('vidInput');
+
+vidDrop.addEventListener('dragover', e => { e.preventDefault(); vidDrop.classList.add('dragover'); });
+vidDrop.addEventListener('dragleave', () => vidDrop.classList.remove('dragover'));
+vidDrop.addEventListener('drop', e => {
+  e.preventDefault(); vidDrop.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleVideo(e.dataTransfer.files[0]);
+});
+vidInput.addEventListener('change', () => { if (vidInput.files[0]) handleVideo(vidInput.files[0]); });
+
+async function handleVideo(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['mp4','avi','mov','mkv','wmv','m4v'].includes(ext)) {
+    alert('Desteklenmeyen format');
+    return;
+  }
+  document.getElementById('vidFileName').textContent = '📎 ' + file.name;
+  vidDrop.classList.add('has-file');
+
+  const prog = document.getElementById('vidProgress');
+  const fill = document.getElementById('vidUploadFill');
+  const sts  = document.getElementById('vidUploadStatus');
+  prog.style.display = 'block';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round(e.loaded / e.total * 100);
+      fill.style.width  = pct + '%';
+      sts.textContent   = `Yükleniyor... ${pct}%`;
+    }
+  };
+  xhr.onload = async () => {
+    if (xhr.status === 201) {
+      const data    = JSON.parse(xhr.responseText);
+      uploadedPath  = data.path;
+      sts.textContent = '✓ Yükleme tamamlandı — video bilgileri alınıyor...';
+
+      // Video probe
+      try {
+        const r = await fetch('/api/training/probe', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({video_path: uploadedPath}),
+        });
+        if (r.ok) {
+          const info     = await r.json();
+          videoDuration  = info.duration;
+          videoFps       = info.fps;
+
+          document.getElementById('vidFps').textContent      = info.fps.toFixed(1);
+          document.getElementById('vidDuration').textContent = info.duration.toFixed(1);
+          document.getElementById('vidRes').textContent      = `${info.width}×${info.height}`;
+          document.getElementById('vidInfoBox').style.display = '';
+
+          // Akıllı varsayılan değerler: normal = ilk %27, anomali = son %27
+          const t   = info.duration;
+          const ns  = 0;
+          const ne  = parseFloat((t * 0.27).toFixed(1));
+          const as_ = parseFloat((t * 0.73).toFixed(1));
+          const ae  = parseFloat(t.toFixed(1));
+
+          document.getElementById('normalStart').value  = ns;
+          document.getElementById('normalEnd').value    = ne;
+          document.getElementById('anomalyStart').value = as_;
+          document.getElementById('anomalyEnd').value   = ae;
+
+          document.getElementById('sumDuration').textContent = info.duration.toFixed(1) + ' sn';
+          document.getElementById('sumVideo').textContent    = file.name;
+
+          updateTimeline();
+          document.getElementById('step1Next').disabled = false;
+          sts.textContent = '✓ Video hazır';
+        }
+      } catch(e) {
+        sts.textContent = '⚠ Video bilgisi alınamadı ama devam edebilirsiniz';
+        document.getElementById('step1Next').disabled = false;
+      }
+    } else {
+      sts.textContent = '✗ Yükleme hatası';
+      vidDrop.classList.remove('has-file');
+    }
+  };
+  xhr.onerror = () => { sts.textContent = '✗ Ağ hatası'; };
+  xhr.send(fd);
+}
+
+// ── Timeline görsel ────────────────────────────────────────────────────
+function updateTimeline() {
+  const dur = videoDuration || 100;
+  const ns  = parseFloat(document.getElementById('normalStart').value)  || 0;
+  const ne  = parseFloat(document.getElementById('normalEnd').value)    || 0;
+  const as_ = parseFloat(document.getElementById('anomalyStart').value) || 0;
+  const ae  = parseFloat(document.getElementById('anomalyEnd').value)   || dur;
+
+  const norm  = document.getElementById('tlNormal');
+  const anom  = document.getElementById('tlAnomaly');
+
+  norm.style.left  = (ns / dur * 100).toFixed(1) + '%';
+  norm.style.width = ((ne - ns) / dur * 100).toFixed(1) + '%';
+
+  anom.style.left  = (as_ / dur * 100).toFixed(1) + '%';
+  anom.style.width = ((ae - as_) / dur * 100).toFixed(1) + '%';
+
+  document.getElementById('tlEnd').textContent = dur.toFixed(1) + ' sn';
+  document.getElementById('tlMid').textContent = ((ns + ne) / 2).toFixed(1) + ' sn';
+
+  // Summary
+  document.getElementById('sumNormal').textContent  = `${ns} – ${ne} sn`;
+  document.getElementById('sumAnomaly').textContent = `${as_} – ${ae} sn`;
+  document.getElementById('sumTest').textContent    = `${ne} – ${as_} sn`;
+}
+
+function validateRanges() {
+  const warn = document.getElementById('rangeWarn');
+  const ns   = parseFloat(document.getElementById('normalStart').value);
+  const ne   = parseFloat(document.getElementById('normalEnd').value);
+  const as_  = parseFloat(document.getElementById('anomalyStart').value);
+  const ae   = parseFloat(document.getElementById('anomalyEnd').value);
+
+  if (ne <= ns) {
+    warn.style.display = ''; warn.textContent = 'Normal bitiş > normal başlangıç olmalı'; return false;
+  }
+  if (ae <= as_) {
+    warn.style.display = ''; warn.textContent = 'Anomali bitiş > anomali başlangıç olmalı'; return false;
+  }
+  if (as_ <= ne) {
+    warn.style.display = ''; warn.textContent = 'Anomali bölgesi, normal bölgesinin bitmesinden sonra başlamalı'; return false;
+  }
+  warn.style.display = 'none';
+  return true;
+}
+
+// ── Range slider bağlama ───────────────────────────────────────────────
+['frameSkip','maxSamples','augMult','threshold'].forEach(id => {
+  const el = document.getElementById(id);
+  const dv = document.getElementById(id+'Val');
+  el.addEventListener('input', () => {
+    dv.textContent = el.value;
+    if (id === 'threshold') document.getElementById('sumThreshold').textContent = el.value;
+  });
+});
+
+// ── Özet güncelle ─────────────────────────────────────────────────────
+function updateSummary() {
+  document.getElementById('sumThreshold').textContent = document.getElementById('threshold').value;
+  updateTimeline();
+}
+
+// ── Eğitimi başlat ─────────────────────────────────────────────────────
+async function startTraining() {
+  if (!validateRanges()) return;
+
+  // Adım 4'e geç
+  [1,2,3,4,5].forEach(i => {
+    document.getElementById('pane-'+i).style.display = (i===4) ? '' : 'none';
+    const ind = document.getElementById('step-ind-'+i);
+    ind.classList.remove('active','done');
+    if (i < 4) ind.classList.add('done');
+    if (i === 4) ind.classList.add('active');
+  });
+  currentStep = 4;
+
+  const payload = {
+    video_path:             uploadedPath,
+    model_name:             document.getElementById('modelName').value.trim(),
+    normal_start:           parseFloat(document.getElementById('normalStart').value),
+    normal_end:             parseFloat(document.getElementById('normalEnd').value),
+    anomaly_start:          parseFloat(document.getElementById('anomalyStart').value),
+    anomaly_end:            parseFloat(document.getElementById('anomalyEnd').value),
+    frame_skip:             parseInt(document.getElementById('frameSkip').value),
+    max_samples:            parseInt(document.getElementById('maxSamples').value),
+    augmentation_multiplier: parseInt(document.getElementById('augMult').value),
+    threshold:              parseFloat(document.getElementById('threshold').value),
+  };
+
+  const res = await fetch('/api/training/start', {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const d = await res.json();
+    alert('Eğitim başlatılamadı: ' + (d.error || ''));
+    return;
+  }
+
+  // Poll
+  pollInterval = setInterval(pollStatus, 1500);
+}
+
+// ── Durum sorgula ──────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const res  = await fetch('/api/training/status');
+    const data = await res.json();
+
+    // Ring progress
+    const pct    = data.progress || 0;
+    const offset = 377 - (pct / 100 * 377);
+    document.getElementById('ringCircle').style.strokeDashoffset = offset;
+    document.getElementById('ringPct').textContent = pct + '%';
+    document.getElementById('trainStatus').textContent = data.message || '';
+
+    // Log
+    const logBox = document.getElementById('logBox');
+    if (data.logs && data.logs.length) {
+      logBox.innerHTML = data.logs.map(l => {
+        let cls = 'log-info';
+        if (l.includes('HATA') || l.includes('Error')) cls = 'log-err';
+        else if (l.includes('Uyarı') || l.includes('UYARI')) cls = 'log-warn';
+        else if (l.includes('✓') || l.includes('tamamlandı')) cls = 'log-ok';
+        return `<div class="${cls}">${l}</div>`;
+      }).join('');
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    if (!data.running) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      showResult(data.result);
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ── Sonuç göster ───────────────────────────────────────────────────────
+function showResult(result) {
+  [1,2,3,4,5].forEach(i => {
+    document.getElementById('pane-'+i).style.display = (i===5) ? '' : 'none';
+    const ind = document.getElementById('step-ind-'+i);
+    ind.classList.remove('active','done');
+    if (i < 5) ind.classList.add('done');
+    if (i === 5) ind.classList.add('active');
+  });
+
+  if (result && result.success) {
+    document.getElementById('resultIcon').textContent  = '✅';
+    document.getElementById('resultTitle').textContent = 'Eğitim Başarıyla Tamamlandı';
+    document.getElementById('resultSuccess').style.display = '';
+    document.getElementById('resultError').style.display   = 'none';
+
+    const m = result.metrics || {};
+    document.getElementById('resAuc').textContent       = m.roc_auc   || '—';
+    document.getElementById('resF1').textContent        = m.f1        || '—';
+    document.getElementById('resPrecision').textContent = m.precision || '—';
+    document.getElementById('resRecall').textContent    = m.recall    || '—';
+    document.getElementById('cmTp').textContent = m.cm_tp || '—';
+    document.getElementById('cmFp').textContent = m.cm_fp || '—';
+    document.getElementById('cmFn').textContent = m.cm_fn || '—';
+    document.getElementById('cmTn').textContent = m.cm_tn || '—';
+  } else {
+    document.getElementById('resultIcon').textContent  = '❌';
+    document.getElementById('resultTitle').textContent = 'Eğitim Başarısız';
+    document.getElementById('resultSuccess').style.display = 'none';
+    document.getElementById('resultError').style.display   = '';
+    document.getElementById('errMsg').textContent = result ? result.message : 'Bilinmeyen hata';
+  }
+}
+
+// ── İptal ─────────────────────────────────────────────────────────────
+async function cancelTraining() {
+  if (!confirm('Eğitimi iptal etmek istiyor musunuz?')) return;
+  await fetch('/api/training/cancel', {method: 'POST'});
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+}
+
+// ── Kaydedilmiş Modeller ───────────────────────────────────────────────
+async function loadModels() {
+  const listEl = document.getElementById('modelList');
+  listEl.innerHTML = '<div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px">Yükleniyor...</div>';
+  try {
+    const res  = await fetch('/api/training/models');
+    const data = await res.json();
+    const models = data.models || [];
+    if (!models.length) {
+      listEl.innerHTML = '<div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px">Henüz kayıtlı model yok</div>';
+      return;
+    }
+    listEl.innerHTML = models.map(m => `
+      <div style="padding:10px;border:1px solid ${m.is_active ? 'var(--cyan)' : 'var(--border)'};border-radius:8px;background:${m.is_active ? 'var(--cyan-dim)' : 'var(--bg-2)'}">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">${m.name}</span>
+          ${m.is_active ? '<span class="badge badge-green" style="font-size:9px">AKTİF</span>' : ''}
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-bottom:8px">
+          ${new Date(m.created_at).toLocaleString('tr-TR')}
+          ${m.metrics && m.metrics.roc_auc ? ` · AUC: ${m.metrics.roc_auc}` : ''}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${!m.is_active ? `<button class="btn btn-primary btn-sm" onclick="activateModel('${m.safe_name}','${m.name}')"
+            style="font-size:10px;padding:3px 8px">⚡ Aktifleştir</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="fineTuneModel('${m.name}')"
+            style="font-size:10px;padding:3px 8px">🔄 Fine-Tune</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteModel('${m.safe_name}','${m.name}')"
+            style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)">🗑 Sil</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:8px">Yüklenemedi</div>';
+  }
+}
+
+async function activateModel(safeName, name) {
+  if (!confirm(`"${name}" modelini aktif model olarak ayarlamak istiyor musunuz?\nMevcut aktif model değiştirilecek.`)) return;
+  const res = await fetch('/api/training/models/activate', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({safe_name: safeName}),
+  });
+  if (res.ok) {
+    alert(`✓ "${name}" modeli aktifleştirildi!`);
+    loadModels();
+  } else {
+    const d = await res.json().catch(()=>({}));
+    alert('Hata: ' + (d.error || 'Aktifleştirilemedi'));
+  }
+}
+
+async function deleteModel(safeName, name) {
+  if (!confirm(`"${name}" modeli silinecek.\n\nEmin misiniz?`)) return;
+  const res = await fetch('/api/training/models/' + safeName, { method: 'DELETE' });
+  if (res.status === 409) {
+    const d = await res.json();
+    if (!confirm(d.warning + '\n\nYine de silmek istiyor musunuz?')) return;
+    const res2 = await fetch('/api/training/models/' + safeName + '?force=true', { method: 'DELETE' });
+    if (res2.ok) { alert('✓ Silindi'); loadModels(); return; }
+  }
+  if (res.ok) { loadModels(); }
+  else {
+    const d = await res.json().catch(()=>({}));
+    alert('Hata: ' + (d.error || 'Silinemedi'));
+  }
+}
+
+function fineTuneModel(name) {
+  // Model adını adım 3'teki alana doldur ve adım 1'e dön
+  document.getElementById('modelName').value = name + ' (v2)';
+  goStep(1);
+  alert('"' + name + '" için fine-tune: Yeni video seçin ve aynı model adını koruyun. Eğitim tamamlanınca üzerine yazılır.');
+}
+
+// Sayfa açıldığında timeline ve model listesini yükle
+updateTimeline();
+loadModels();
+</script>
+{% endblock %}
